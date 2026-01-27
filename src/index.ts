@@ -1,5 +1,6 @@
 import express from 'express';
 import helmet from 'helmet';
+import cors from 'cors';
 import dotenv from 'dotenv';
 
 import antenneRoutes from './routes/antenne.routes';
@@ -13,7 +14,10 @@ const PORT = process.env.PORT || 3002;
 
 // Middlewares de sécurité et parsing
 app.use(helmet());
-// CORS géré par nginx
+app.use(cors({
+  origin: process.env.CORS_ORIGINS?.split(',') || '*',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
