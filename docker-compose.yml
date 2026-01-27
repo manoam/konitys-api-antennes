@@ -1,0 +1,64 @@
+services:
+  # ===========================================
+  # Base de données PostgreSQL pour Antennes
+  # ===========================================
+  postgres:
+    image: postgres:16
+    container_name: konitys-antennes-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-antennes}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-antennes_dev_2024}
+      POSTGRES_DB: ${DB_NAME:-antennes}
+    ports:
+      - "54321:5432"
+    volumes:
+      - postgres_antennes_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - antennes-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-antennes}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # API Antennes
+  # ===========================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: konitys-api-antennes
+    environment:
+      PORT: 3002
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-antennes}
+      DB_PASSWORD: ${DB_PASSWORD:-antennes_dev_2024}
+      DB_NAME: ${DB_NAME:-antennes}
+      KEYCLOAK_URL: http://konitys-keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://auth.konitys.fr
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-konitys}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-konitys-api}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://konitys:rabbitmq_dev_2024@konitys-rabbitmq:5672}
+    extra_hosts:
+      - "localhost:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - antennes-network
+      - konitys-network
+    restart: unless-stopped
+
+networks:
+  antennes-network:
+    driver: bridge
+  konitys-network:
+    external: true
+    name: konitys-infrastructure_konitys-network
+
+volumes:
+  postgres_antennes_data:
